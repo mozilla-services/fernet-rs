@@ -115,7 +115,7 @@ impl Fernet {
         let mut hmac_signer = openssl::sign::Signer::new(openssl::hash::MessageDigest::sha256(), &hmac_pkey).unwrap();
         hmac_signer.update(&input.get_ref()[..input.get_ref().len() - 32]).unwrap();
         let expected_hmac = hmac_signer.sign_to_vec().unwrap();
-        if expected_hmac != hmac {
+        if !openssl::memcmp::eq(&expected_hmac, hmac) {
             return Err(DecryptionError);
         }
 
@@ -132,7 +132,6 @@ impl Fernet {
         return Ok(plaintext);
     }
 }
-
 
 #[cfg(test)]
 mod tests {
