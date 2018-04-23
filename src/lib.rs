@@ -39,6 +39,40 @@ pub struct Fernet {
 #[derive(Debug, PartialEq, Eq)]
 pub struct DecryptionError;
 
+pub struct MultiFernet {
+    fernets: Vec<Fernet>,
+}
+
+/// `MultiFernet` encapsulates the encrypt operation with the first `Fernet`
+/// instance and decryption with  the `Fernet` instances provided in order
+/// until successful decryption or a `DecryptionError`.
+impl MultiFernet {
+    pub fn new(keys: Vec<Fernet>) -> MultiFernet {
+        assert!(keys.len() > 0);
+        MultiFernet { fernets: keys }
+    }
+
+    /// Encrypts data with the first `Fernet` instance. Returns a value
+    /// (which is base64-encoded) that can be passed to `MultiFernet::decrypt`.
+    pub fn encrypt(&self, data: &[u8]) -> String {
+        self.fernets[0].encrypt(data)
+    }
+
+    /// Decrypts a ciphertext, using the `Fernet` instances provided. Returns
+    /// either `Ok(plaintext)` if decryption is successful or
+    /// `Err(DecryptionError)` if there are any errors.
+    pub fn decrypt(&self, token: &str) -> Result<Vec<u8>, DecryptionError> {
+        for fernet in self.fernets.iter() {
+            let res = fernet.decrypt(token);
+            if res.is_ok() {
+                return res;
+            }
+        }
+
+        return Err(DecryptionError);
+    }
+}
+
 /// `Fernet` encapsulates encrypt and decrypt operations for a particular key.
 impl Fernet {
     /// Returns a new fernet instance with the provided key. The key should be
@@ -198,7 +232,7 @@ mod tests {
     extern crate serde_json;
 
     use std::collections::HashSet;
-    use super::{DecryptionError, Fernet};
+    use super::{DecryptionError, Fernet, MultiFernet};
 
     #[derive(Deserialize)]
     struct GenerateVector<'a> {
@@ -246,7 +280,8 @@ mod tests {
 
     #[test]
     fn test_verify_vectors() {
-        let vectors: Vec<VerifyVector> = serde_json::from_str(include_str!("../tests/verify.json")).unwrap();
+        let vectors: Vec<VerifyVector> =
+            serde_json::from_str(include_str!("../tests/verify.json")).unwrap();
 
         for v in vectors {
             let f = Fernet::new(v.secret).unwrap();
@@ -334,6 +369,44 @@ mod tests {
         for val in [b"".to_vec(), b"Abc".to_vec(), b"\x00\xFF\x00\x00".to_vec()].into_iter() {
             assert_eq!(f1.decrypt(&f2.encrypt(&val)), Ok(val.clone()));
             assert_eq!(f2.decrypt(&f1.encrypt(&val)), Ok(val.clone()));
+        }
+    }
+
+    #[test]
+    fn test_multi_encrypt() {
+        let key1 = Fernet::generate_key();
+        let key2 = Fernet::generate_key();
+        let f1 = Fernet::new(&key1).unwrap();
+        let f2 = Fernet::new(&key2).unwrap();
+        let f = MultiFernet::new(vec![Fernet::new(&key1).unwrap(), Fernet::new(&key2).unwrap()]);
+        assert_eq!(f1.decrypt(&f.encrypt(b"abc")).unwrap(), b"abc".to_vec());
+        assert_eq!(f2.decrypt(&f.encrypt(b"abc")), Err(DecryptionError));
+    }
+
+    #[test]
+    fn test_multi_decrypt() {
+        let key1 = Fernet::generate_key();
+        let key2 = Fernet::generate_key();
+        let f1 = Fernet::new(&key1).unwrap();
+        let f2 = Fernet::new(&key2).unwrap();
+        let f = MultiFernet::new(vec![Fernet::new(&key1).unwrap(), Fernet::new(&key2).unwrap()]);
+        assert_eq!(f.decrypt(&f1.encrypt(b"abc")).unwrap(), b"abc".to_vec());
+        assert_eq!(f.decrypt(&f2.encrypt(b"abc")).unwrap(), b"abc".to_vec());
+        assert_eq!(f.decrypt("\x00"), Err(DecryptionError));
+    }
+
+    #[test]
+    #[should_panic]
+    fn test_multi_no_fernets() {
+        MultiFernet::new(vec![]);
+    }
+
+    #[test]
+    fn test_multi_roundtrips() {
+        let f = MultiFernet::new(vec![Fernet::new(&Fernet::generate_key()).unwrap()]);
+
+        for val in [b"".to_vec(), b"Abc".to_vec(), b"\x00\xFF\x00\x00".to_vec()].into_iter() {
+            assert_eq!(f.decrypt(&f.encrypt(&val)), Ok(val.clone()));
         }
     }
 }
