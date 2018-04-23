@@ -8,9 +8,5 @@ rust:
 
 cache: cargo
 
-branches:
-    only:
-        - master
-
 notifications:
     email: false
