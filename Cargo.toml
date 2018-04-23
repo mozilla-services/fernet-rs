@@ -1,0 +1,16 @@
+[package]
+name = "fernet-rs"
+version = "0.1.0"
+authors = ["Alex Gaynor <agaynor@mozilla.com>"]
+
+[dependencies]
+base64 = "*"
+byteorder = "*"
+openssl = "*"
+rand = "*"
+
+[dev-dependencies]
+chrono = "*"
+serde = "*"
+serde_derive = "*"
+serde_json = "*"
