@@ -68,6 +68,8 @@ impl Fernet {
         return self._decrypt_at_time(token, None, current_time);
     }
 
+    // TODO: add decrypt_with_ttl()
+
     fn _decrypt_at_time(&self, token: &str, ttl: Option<u64>, current_time: u64) -> Result<Vec<u8>, DecryptionError> {
         let data = match base64::decode_config(token, base64::URL_SAFE) {
             Ok(data) => data,
