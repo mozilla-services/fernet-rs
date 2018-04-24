@@ -273,8 +273,8 @@ mod tests {
 
     #[test]
     fn test_new_errors() {
-        assert_eq!(Fernet::new("axxx"), None);
-        assert_eq!(Fernet::new(&base64::encode_config(&vec![0, 33], base664::URL_SAFE)), None);
-        assert_eq!(Fernet::new(&base64::encode_config(&vec![0, 31], base664::URL_SAFE)), None);
+        assert!(Fernet::new("axxx").is_none());
+        assert!(Fernet::new(&base64::encode_config(&vec![0, 33], base64::URL_SAFE)).is_none());
+        assert!(Fernet::new(&base64::encode_config(&vec![0, 31], base64::URL_SAFE)).is_none());
     }
 }
