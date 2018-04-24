@@ -15,8 +15,8 @@ use rand::Rng;
 const MAX_CLOCK_SKEW: u64 = 60;
 
 pub struct Fernet {
-    encryption_key: Vec<u8>,
-    signing_key: Vec<u8>,
+    encryption_key: [u8; 16],
+    signing_key: [u8; 16],
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -28,9 +28,15 @@ impl Fernet {
         if key.len() != 32 {
             return None;
         }
+
+        let mut signing_key: [u8; 16] = Default::default();
+        signing_key.copy_from_slice(&key[..16]);
+        let mut encryption_key: [u8; 16] = Default::default();
+        encryption_key.copy_from_slice(&key[16..]);
+
         Some(Fernet {
-            signing_key: key[..16].to_vec(),
-            encryption_key: key[16..].to_vec(),
+            signing_key,
+            encryption_key,
         })
     }
 
