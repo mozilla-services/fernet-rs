@@ -23,13 +23,15 @@ pub struct Fernet {
 pub struct DecryptionError;
 
 impl Fernet {
-    pub fn new(key: &str) -> Fernet {
-        let key = base64::decode_config(key, base64::URL_SAFE).unwrap();
-        assert_eq!(key.len(), 32);
-        Fernet {
+    pub fn new(key: &str) -> Option<Fernet> {
+        let key = base64::decode_config(key, base64::URL_SAFE).ok()?;
+        if key.len() != 32 {
+            return None;
+        }
+        Some(Fernet {
             signing_key: key[..16].to_vec(),
             encryption_key: key[16..].to_vec(),
-        }
+        })
     }
 
     pub fn encrypt(&self, data: &[u8]) -> String {
@@ -190,7 +192,7 @@ mod tests {
             serde_json::from_str(include_str!("generate.json")).unwrap();
 
         for v in vectors {
-            let f = Fernet::new(v.secret);
+            let f = Fernet::new(v.secret).unwrap();
             let token = f._encrypt_from_parts(
                 v.src.as_bytes(),
                 chrono::DateTime::parse_from_rfc3339(v.now)
@@ -208,7 +210,7 @@ mod tests {
         let vectors: Vec<VerifyVector> = serde_json::from_str(include_str!("verify.json")).unwrap();
 
         for v in vectors {
-            let f = Fernet::new(v.secret);
+            let f = Fernet::new(v.secret).unwrap();
             let decrypted = f._decrypt_at_time(
                 v.token,
                 Some(v.ttl_sec),
@@ -227,7 +229,7 @@ mod tests {
             serde_json::from_str(include_str!("invalid.json")).unwrap();
 
         for v in vectors {
-            let f = Fernet::new(v.secret);
+            let f = Fernet::new(v.secret).unwrap();
             let decrypted = f._decrypt_at_time(
                 v.token,
                 Some(v.ttl_sec),
@@ -241,7 +243,7 @@ mod tests {
 
     #[test]
     fn test_invalid() {
-        let f = Fernet::new(&base64::encode_config(&vec![0; 32], base64::URL_SAFE));
+        let f = Fernet::new(&base64::encode_config(&vec![0; 32], base64::URL_SAFE)).unwrap();
 
         // Invalid version byte
         assert_eq!(
@@ -262,11 +264,17 @@ mod tests {
 
     #[test]
     fn test_roundtrips() {
-        let f = Fernet::new(&base64::encode_config(&vec![0; 32], base64::URL_SAFE));
+        let f = Fernet::new(&base64::encode_config(&vec![0; 32], base64::URL_SAFE)).unwrap();
 
         for val in [b"".to_vec(), b"Abc".to_vec(), b"\x00\xFF\x00\x00".to_vec()].into_iter() {
             assert_eq!(f.decrypt(&f.encrypt(&val)), Ok(val.clone()));
         }
     }
 
+    #[test]
+    fn test_new_errors() {
+        assert!(Fernet::new("axxx").is_none());
+        assert!(Fernet::new(&base64::encode_config(&vec![0, 33], base64::URL_SAFE)).is_none());
+        assert!(Fernet::new(&base64::encode_config(&vec![0, 31], base64::URL_SAFE)).is_none());
+    }
 }
