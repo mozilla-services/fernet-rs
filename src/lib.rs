@@ -91,9 +91,8 @@ impl Fernet {
 
         let mut input = Cursor::new(data);
 
-        match input.read_u8() {
-            Ok(0x80) => {}
-            _ => return Err(DecryptionError),
+        if input.read_u8() != Ok(0x80) {
+            return Err(DecryptionError);
         }
 
         let timestamp = match input.read_u64::<byteorder::BigEndian>() {
