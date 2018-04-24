@@ -39,7 +39,7 @@ impl Fernet {
             .duration_since(time::UNIX_EPOCH)
             .unwrap()
             .as_secs();
-        let mut iv = vec![0; 16];
+        let mut iv: [u8; 16] = Default::default();
         rand::OsRng::new().unwrap().fill_bytes(&mut iv);
         return self._encrypt_from_parts(data, current_time, &iv);
     }
