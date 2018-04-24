@@ -32,6 +32,12 @@ impl Fernet {
         }
     }
 
+    pub fn generate_key() -> String {
+        let mut key: [u8; 32] = Default::default();
+        rand::OsRng::new().unwrap().fill_bytes(&mut key);
+        return base64::encode_config(&key, base64::URL_SAFE);
+    }
+
     pub fn encrypt(&self, data: &[u8]) -> String {
         let current_time = time::SystemTime::now()
             .duration_since(time::UNIX_EPOCH)
@@ -155,6 +161,7 @@ mod tests {
     extern crate chrono;
     extern crate serde_json;
 
+    use std::collections::HashSet;
     use super::{DecryptionError, Fernet};
 
     #[derive(Deserialize)]
@@ -269,4 +276,24 @@ mod tests {
         }
     }
 
+    #[test]
+    fn test_generate_key() {
+        let mut keys = HashSet::new();
+        for _ in 0..1024 {
+            keys.insert(Fernet::generate_key());
+        }
+        assert_eq!(keys.len(), 1024);
+    }
+
+    #[test]
+    fn test_generate_key_roundtrips() {
+        let k = Fernet::generate_key();
+        let f1 = Fernet::new(&k);
+        let f2 = Fernet::new(&k);
+
+        for val in [b"".to_vec(), b"Abc".to_vec(), b"\x00\xFF\x00\x00".to_vec()].into_iter() {
+            assert_eq!(f1.decrypt(&f2.encrypt(&val)), Ok(val.clone()));
+            assert_eq!(f2.decrypt(&f1.encrypt(&val)), Ok(val.clone()));
+        }
+    }
 }
