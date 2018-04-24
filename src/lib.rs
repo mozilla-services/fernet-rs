@@ -187,9 +187,8 @@ mod tests {
 
     #[test]
     fn test_generate_vectors() {
-        // TODO: the vector file shouldn't be in this directory
         let vectors: Vec<GenerateVector> =
-            serde_json::from_str(include_str!("generate.json")).unwrap();
+            serde_json::from_str(include_str!("../tests/generate.json")).unwrap();
 
         for v in vectors {
             let f = Fernet::new(v.secret).unwrap();
@@ -206,8 +205,7 @@ mod tests {
 
     #[test]
     fn test_verify_vectors() {
-        // TODO: the vector file shouldn't be in this directory
-        let vectors: Vec<VerifyVector> = serde_json::from_str(include_str!("verify.json")).unwrap();
+        let vectors: Vec<VerifyVector> = serde_json::from_str(include_str!("../tests/verify.json")).unwrap();
 
         for v in vectors {
             let f = Fernet::new(v.secret).unwrap();
@@ -224,9 +222,8 @@ mod tests {
 
     #[test]
     fn test_invalid_vectors() {
-        // TODO: the vector file shouldn't be in this directory
         let vectors: Vec<InvalidVector> =
-            serde_json::from_str(include_str!("invalid.json")).unwrap();
+            serde_json::from_str(include_str!("../tests/invalid.json")).unwrap();
 
         for v in vectors {
             let f = Fernet::new(v.secret).unwrap();
