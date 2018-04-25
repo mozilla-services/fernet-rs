@@ -108,7 +108,7 @@ impl Fernet {
         return base64::encode_config(&result, base64::URL_SAFE);
     }
 
-    /// Decrypts a ciphertext. Returns either `Ok(data)` if decryption is
+    /// Decrypts a ciphertext. Returns either `Ok(plaintext)` if decryption is
     /// successful or `Err(DecryptionError)` if there are any errors.
     pub fn decrypt(&self, token: &str) -> Result<Vec<u8>, DecryptionError> {
         let current_time = time::SystemTime::now()
