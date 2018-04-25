@@ -34,7 +34,7 @@ pub struct Fernet {
     signing_key: [u8; 16],
 }
 
-/// This erorr is returned when fernet cannot decrypt the ciphertext for any
+/// This error is returned when fernet cannot decrypt the ciphertext for any
 /// reason.
 #[derive(Debug, PartialEq, Eq)]
 pub struct DecryptionError;
