@@ -3,15 +3,13 @@
 //! interoperable implementations in Rust, Python, Ruby, Go, and Clojure.
 
 //! # Example
-//! ```
-//! extern crate fernet;
-//! use fernet::Fernet;
+//! ```rust
 //! // Store `key` somewhere safe!
-//! let key = Fernet::generate_key();
-//! let fernet = Fernet::new(key).unwrap();
+//! let key = fernet::Fernet::generate_key();
+//! let fernet = fernet::Fernet::new(&key).unwrap();
 //! let plaintext = b"my top secret message!";
 //! let ciphertext = fernet.encrypt(plaintext);
-//! let decrypted_plaintext = fernet.decrypt(ciphertext);
+//! let decrypted_plaintext = fernet.decrypt(&ciphertext);
 //! assert_eq!(decrypted_plaintext.unwrap(), plaintext);
 // ```
 
