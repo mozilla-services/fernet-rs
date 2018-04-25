@@ -1,3 +1,18 @@
+//! Fernet provides symmetric-authenticated-encryption with an API that makes
+//! misusing it difficult. It is based on a public specification and there are
+//! interoperable implementations in Rust, Python, Ruby, Go, and Clojure.
+
+//! # Example
+//! ```
+//! // Store `key` somewhere safe!
+//! let key = Fernet::generate_key();
+//! let fernet = Fernet::new(key).unwrap();
+//! let plaintext = b"my top secret message!";
+//! let ciphertext = fernet.encrypt(plaintext);
+//! let decrypted_plaintext = fernet.decrypt(ciphertext);
+//! assert_eq!(decrypted_plaintext, plaintext);
+// ```
+
 #[cfg(test)]
 #[macro_use]
 extern crate serde_derive;
@@ -19,10 +34,17 @@ pub struct Fernet {
     signing_key: [u8; 16],
 }
 
+/// This erorr is returned when fernet cannot decrypt the ciphertext for any
+/// reason.
 #[derive(Debug, PartialEq, Eq)]
 pub struct DecryptionError;
 
+/// `Fernet` encapsulates encrypt and decrypt operations for a particular key.
 impl Fernet {
+    /// Returns a new fernet instance with the provided key. The key should be
+    /// 32-bytes, base64-encoded. Generating keys with `Fernet::generate_key`
+    /// is recommended. DO NOT USE A HUMAN READABLE PASSWORD AS A KEY. Returns
+    /// `None` if the key is not 32-bytes base64 encoded.
     pub fn new(key: &str) -> Option<Fernet> {
         let key = base64::decode_config(key, base64::URL_SAFE).ok()?;
         if key.len() != 32 {
@@ -40,12 +62,16 @@ impl Fernet {
         })
     }
 
+    /// Generates a new, random, key. Can be safely passed to `Fernet::new()`.
+    /// Store this somewhere safe!
     pub fn generate_key() -> String {
         let mut key: [u8; 32] = Default::default();
         rand::OsRng::new().unwrap().fill_bytes(&mut key);
         return base64::encode_config(&key, base64::URL_SAFE);
     }
 
+    /// Encrypts data. Returns a value (which is base64-encoded) that can be
+    /// passed to `Fernet::decrypt`.
     pub fn encrypt(&self, data: &[u8]) -> String {
         let current_time = time::SystemTime::now()
             .duration_since(time::UNIX_EPOCH)
@@ -82,6 +108,8 @@ impl Fernet {
         return base64::encode_config(&result, base64::URL_SAFE);
     }
 
+    /// Decrypts a ciphertext. Returns either `Ok(data)` if decryption is
+    /// successful or `Err(DecryptionError)` if there are any errors.
     pub fn decrypt(&self, token: &str) -> Result<Vec<u8>, DecryptionError> {
         let current_time = time::SystemTime::now()
             .duration_since(time::UNIX_EPOCH)
