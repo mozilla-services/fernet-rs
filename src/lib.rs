@@ -4,13 +4,14 @@
 
 //! # Example
 //! ```
+//! use fernet::Fernet;
 //! // Store `key` somewhere safe!
 //! let key = Fernet::generate_key();
 //! let fernet = Fernet::new(key).unwrap();
 //! let plaintext = b"my top secret message!";
 //! let ciphertext = fernet.encrypt(plaintext);
 //! let decrypted_plaintext = fernet.decrypt(ciphertext);
-//! assert_eq!(decrypted_plaintext, plaintext);
+//! assert_eq!(decrypted_plaintext.unwrap(), plaintext);
 // ```
 
 #[cfg(test)]
