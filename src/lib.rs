@@ -4,6 +4,7 @@
 
 //! # Example
 //! ```
+//! extern crate fernet;
 //! use fernet::Fernet;
 //! // Store `key` somewhere safe!
 //! let key = Fernet::generate_key();
