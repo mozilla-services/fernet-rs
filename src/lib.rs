@@ -172,10 +172,9 @@ impl Fernet {
             _ => return Err(DecryptionError),
         }
 
-        let timestamp = match input.read_u64::<byteorder::BigEndian>() {
-            Ok(value) => value,
-            Err(_) => return Err(DecryptionError),
-        };
+        let timestamp = input
+            .read_u64::<byteorder::BigEndian>()
+            .map_err(|_| DecryptionError)?;
 
         if let Some(ttl) = ttl {
             if timestamp + ttl < current_time {
@@ -188,9 +187,7 @@ impl Fernet {
         }
 
         let mut iv = vec![0; 16];
-        if input.read_exact(&mut iv).is_err() {
-            return Err(DecryptionError);
-        }
+        input.read_exact(&mut iv).map_err(|_| DecryptionError)?;
 
         let mut rest = vec![];
         input.read_to_end(&mut rest).unwrap();
@@ -211,15 +208,12 @@ impl Fernet {
             return Err(DecryptionError);
         }
 
-        let plaintext = match openssl::symm::decrypt(
+        let plaintext = openssl::symm::decrypt(
             openssl::symm::Cipher::aes_128_cbc(),
             &self.encryption_key,
             Some(&iv),
             ciphertext,
-        ) {
-            Ok(value) => value,
-            Err(_) => return Err(DecryptionError),
-        };
+        ).map_err(|_| DecryptionError)?;
 
         return Ok(plaintext);
     }
@@ -378,7 +372,10 @@ mod tests {
         let key2 = Fernet::generate_key();
         let f1 = Fernet::new(&key1).unwrap();
         let f2 = Fernet::new(&key2).unwrap();
-        let f = MultiFernet::new(vec![Fernet::new(&key1).unwrap(), Fernet::new(&key2).unwrap()]);
+        let f = MultiFernet::new(vec![
+            Fernet::new(&key1).unwrap(),
+            Fernet::new(&key2).unwrap(),
+        ]);
         assert_eq!(f1.decrypt(&f.encrypt(b"abc")).unwrap(), b"abc".to_vec());
         assert_eq!(f2.decrypt(&f.encrypt(b"abc")), Err(DecryptionError));
     }
@@ -389,7 +386,10 @@ mod tests {
         let key2 = Fernet::generate_key();
         let f1 = Fernet::new(&key1).unwrap();
         let f2 = Fernet::new(&key2).unwrap();
-        let f = MultiFernet::new(vec![Fernet::new(&key1).unwrap(), Fernet::new(&key2).unwrap()]);
+        let f = MultiFernet::new(vec![
+            Fernet::new(&key1).unwrap(),
+            Fernet::new(&key2).unwrap(),
+        ]);
         assert_eq!(f.decrypt(&f1.encrypt(b"abc")).unwrap(), b"abc".to_vec());
         assert_eq!(f.decrypt(&f2.encrypt(b"abc")).unwrap(), b"abc".to_vec());
         assert_eq!(f.decrypt("\x00"), Err(DecryptionError));
