@@ -1,13 +1,13 @@
 [package]
 name = "fernet"
 version = "0.1.0"
-authors = ["Alex Gaynor <agaynor@mozilla.com>"]
+authors = ["Alex Gaynor <agaynor@mozilla.com>", "Ben Bangert <bbangert@mozilla.com>"]
 
 [dependencies]
-base64 = "*"
-byteorder = "*"
-openssl = "*"
-rand = "*"
+base64 = "0.9"
+byteorder = "1"
+openssl = "0.10"
+rand = "0.4"
 
 [dev-dependencies]
 chrono = "*"
