@@ -5,7 +5,7 @@ authors = ["Alex Gaynor <agaynor@mozilla.com>", "Ben Bangert <bbangert@mozilla.c
 description = "An implementation of fernet in Rust."
 repository = "https://github.com/mozilla-services/fernet-rs/"
 homepage = "https://github.com/mozilla-services/fernet-rs/"
-license = "MPL"
+license = "MPL-2.0"
 readme = "README.md"
 
 [badges]
