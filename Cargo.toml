@@ -2,6 +2,14 @@
 name = "fernet"
 version = "0.1.0"
 authors = ["Alex Gaynor <agaynor@mozilla.com>", "Ben Bangert <bbangert@mozilla.com>"]
+description = "An implementation of fernet in Rust."
+repository = "https://github.com/mozilla-services/fernet-rs/"
+homepage = "https://github.com/mozilla-services/fernet-rs/"
+license = "MPL"
+readme = "README.md"
+
+[badges]
+travis-ci = { repository = "mozilla-services/fernet-rs" }
 
 [dependencies]
 base64 = "0.9"
