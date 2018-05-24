@@ -25,7 +25,7 @@ extern crate rand;
 use byteorder::{ReadBytesExt, WriteBytesExt};
 use std::io::{Cursor, Read};
 use std::time;
-use rand::Rng;
+use rand::RngCore;
 
 const MAX_CLOCK_SKEW: u64 = 60;
 
