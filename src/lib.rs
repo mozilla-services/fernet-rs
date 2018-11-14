@@ -100,7 +100,7 @@ impl Fernet {
     /// Store this somewhere safe!
     pub fn generate_key() -> String {
         let mut key: [u8; 32] = Default::default();
-        rand::OsRng::new().unwrap().fill(&mut key);
+        rand::rngs::OsRng::new().unwrap().fill(&mut key);
         return base64::encode_config(&key, base64::URL_SAFE);
     }
 
@@ -112,7 +112,7 @@ impl Fernet {
             .unwrap()
             .as_secs();
         let mut iv: [u8; 16] = Default::default();
-        rand::OsRng::new().unwrap().fill(&mut iv);
+        rand::rngs::OsRng::new().unwrap().fill(&mut iv);
         return self._encrypt_from_parts(data, current_time, &iv);
     }
 
