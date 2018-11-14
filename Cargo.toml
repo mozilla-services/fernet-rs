@@ -12,7 +12,7 @@ readme = "README.md"
 travis-ci = { repository = "mozilla-services/fernet-rs" }
 
 [dependencies]
-base64 = "0.9"
+base64 = "0.10"
 byteorder = "1"
 openssl = "0.10"
 rand = "0.6"
