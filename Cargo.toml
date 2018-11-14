@@ -15,7 +15,7 @@ travis-ci = { repository = "mozilla-services/fernet-rs" }
 base64 = "0.9"
 byteorder = "1"
 openssl = "0.10"
-rand = "0.5"
+rand = "0.6"
 
 [dev-dependencies]
 chrono = "0.4"
