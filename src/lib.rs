@@ -13,19 +13,12 @@
 //! assert_eq!(decrypted_plaintext.unwrap(), plaintext);
 // ```
 
-#[cfg(test)]
-#[macro_use]
-extern crate serde_derive;
-
-extern crate base64;
-extern crate byteorder;
-extern crate openssl;
-extern crate rand;
-
+use base64;
 use byteorder::{ReadBytesExt, WriteBytesExt};
+use openssl;
+use rand::Rng;
 use std::io::{Cursor, Read};
 use std::time;
-use rand::Rng;
 
 const MAX_CLOCK_SKEW: u64 = 60;
 
@@ -122,7 +115,8 @@ impl Fernet {
             &self.encryption_key,
             Some(iv),
             data,
-        ).unwrap();
+        )
+        .unwrap();
 
         let mut result = Vec::new();
         result.push(0x80);
@@ -213,7 +207,8 @@ impl Fernet {
             &self.encryption_key,
             Some(&iv),
             ciphertext,
-        ).map_err(|_| DecryptionError)?;
+        )
+        .map_err(|_| DecryptionError)?;
 
         return Ok(plaintext);
     }
@@ -221,12 +216,12 @@ impl Fernet {
 
 #[cfg(test)]
 mod tests {
-    extern crate base64;
-    extern crate chrono;
-    extern crate serde_json;
-
-    use std::collections::HashSet;
     use super::{DecryptionError, Fernet, MultiFernet};
+    use base64;
+    use chrono;
+    use serde_derive::Deserialize;
+    use serde_json;
+    use std::collections::HashSet;
 
     #[derive(Deserialize)]
     struct GenerateVector<'a> {
