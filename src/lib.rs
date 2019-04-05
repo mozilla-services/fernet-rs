@@ -16,7 +16,7 @@
 use base64;
 use byteorder::{ReadBytesExt, WriteBytesExt};
 use openssl;
-use rand::Rng;
+use getrandom;
 use std::io::{Cursor, Read};
 use std::time;
 
@@ -93,7 +93,7 @@ impl Fernet {
     /// Store this somewhere safe!
     pub fn generate_key() -> String {
         let mut key: [u8; 32] = Default::default();
-        rand::rngs::OsRng::new().unwrap().fill(&mut key);
+        getrandom::getrandom(&mut key).expect("Error in getrandom");
         return base64::encode_config(&key, base64::URL_SAFE);
     }
 
@@ -105,7 +105,7 @@ impl Fernet {
             .unwrap()
             .as_secs();
         let mut iv: [u8; 16] = Default::default();
-        rand::rngs::OsRng::new().unwrap().fill(&mut iv);
+        getrandom::getrandom(&mut iv).expect("Error in getrandom");
         return self._encrypt_from_parts(data, current_time, &iv);
     }
 
