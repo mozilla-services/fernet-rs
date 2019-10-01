@@ -15,8 +15,8 @@
 
 use base64;
 use byteorder::{ReadBytesExt, WriteBytesExt};
-use openssl;
 use getrandom;
+use openssl;
 use std::io::{Cursor, Read};
 use std::time;
 
@@ -41,7 +41,7 @@ pub struct MultiFernet {
 /// until successful decryption or a `DecryptionError`.
 impl MultiFernet {
     pub fn new(keys: Vec<Fernet>) -> MultiFernet {
-        assert!(keys.len() > 0);
+        assert!(!keys.is_empty(), "Keys already have been set");
         MultiFernet { fernets: keys }
     }
 
@@ -62,7 +62,7 @@ impl MultiFernet {
             }
         }
 
-        return Err(DecryptionError);
+        Err(DecryptionError)
     }
 }
 
@@ -94,7 +94,7 @@ impl Fernet {
     pub fn generate_key() -> String {
         let mut key: [u8; 32] = Default::default();
         getrandom::getrandom(&mut key).expect("Error in getrandom");
-        return base64::encode_config(&key, base64::URL_SAFE);
+        base64::encode_config(&key, base64::URL_SAFE)
     }
 
     /// Encrypts data. Returns a value (which is base64-encoded) that can be
@@ -106,7 +106,7 @@ impl Fernet {
             .as_secs();
         let mut iv: [u8; 16] = Default::default();
         getrandom::getrandom(&mut iv).expect("Error in getrandom");
-        return self._encrypt_from_parts(data, current_time, &iv);
+        self._encrypt_from_parts(data, current_time, &iv)
     }
 
     fn _encrypt_from_parts(&self, data: &[u8], current_time: u64, iv: &[u8]) -> String {
@@ -133,7 +133,7 @@ impl Fernet {
 
         result.extend_from_slice(&hmac_signer.sign_to_vec().unwrap());
 
-        return base64::encode_config(&result, base64::URL_SAFE);
+        base64::encode_config(&result, base64::URL_SAFE)
     }
 
     /// Decrypts a ciphertext. Returns either `Ok(plaintext)` if decryption is
@@ -143,7 +143,7 @@ impl Fernet {
             .duration_since(time::UNIX_EPOCH)
             .unwrap()
             .as_secs();
-        return self._decrypt_at_time(token, None, current_time);
+        self._decrypt_at_time(token, None, current_time)
     }
 
     // TODO: add decrypt_with_ttl()
@@ -210,7 +210,7 @@ impl Fernet {
         )
         .map_err(|_| DecryptionError)?;
 
-        return Ok(plaintext);
+        Ok(plaintext)
     }
 }
 
