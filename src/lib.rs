@@ -146,7 +146,17 @@ impl Fernet {
         return self._decrypt_at_time(token, None, current_time);
     }
 
-    // TODO: add decrypt_with_ttl()
+    /// Decrypts a ciphertext with a time-to-live. Returns either `Ok(plaintext)`
+    /// if decryption is successful or `Err(DecryptionError)` if there are any errors.
+    /// Note if the token timestamp + ttl > current time, then this will also yield a
+    /// DecryptionError. The ttl is measured in seconds.
+    pub fn decrypt_with_ttl(&self, token: &str, ttl_secs: u64) -> Result<Vec<u8>, DecryptionError> {
+        let current_time = time::SystemTime::now()
+            .duration_since(time::UNIX_EPOCH)
+            .unwrap()
+            .as_secs();
+        return self._decrypt_at_time(token, Some(ttl_secs), current_time);
+    }
 
     fn _decrypt_at_time(
         &self,
