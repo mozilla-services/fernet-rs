@@ -104,6 +104,21 @@ impl Fernet {
             .duration_since(time::UNIX_EPOCH)
             .unwrap()
             .as_secs();
+        self.encrypt_at_time(data, current_time)
+    }
+
+    /// Encrypts data with the current_time. Returns a value (which is base64-encoded) that can be
+    /// passed to `Fernet::decrypt`.
+    ///
+    /// This function has the capacity to be used incorrectly or insecurely due to
+    /// to the "current_time" parameter. current_time must be the systems time::SystemTime::now()
+    /// with duraction_since(time::UNIX_EPOCH) as seconds.
+    ///
+    /// The motivation for a function like this is for your application to be able to test
+    /// ttl expiry of tokens in your API. This allows you to pass in mock time data to assert
+    /// correct behaviour of your application. Care should be taken to ensure you always pass in
+    /// correct current_time values for deployments.
+    pub fn encrypt_at_time(&self, data: &[u8], current_time: u64) -> String {
         let mut iv: [u8; 16] = Default::default();
         getrandom::getrandom(&mut iv).expect("Error in getrandom");
         self._encrypt_from_parts(data, current_time, &iv)
@@ -143,7 +158,7 @@ impl Fernet {
             .duration_since(time::UNIX_EPOCH)
             .unwrap()
             .as_secs();
-        self._decrypt_at_time(token, None, current_time)
+        self.decrypt_at_time(token, None, current_time)
     }
 
     /// Decrypts a ciphertext with a time-to-live. Returns either `Ok(plaintext)`
@@ -155,10 +170,22 @@ impl Fernet {
             .duration_since(time::UNIX_EPOCH)
             .unwrap()
             .as_secs();
-        return self._decrypt_at_time(token, Some(ttl_secs), current_time);
+        return self.decrypt_at_time(token, Some(ttl_secs), current_time);
     }
 
-    fn _decrypt_at_time(
+    /// Decrypt a ciphertext with a time-to-live, and the current time.
+    /// Returns either `Ok(plaintext)` if decryption is
+    /// successful or `Err(DecryptionError)` if there are any errors.
+    ///
+    /// This function has the capacity to be used incorrectly or insecurely due to
+    /// to the "current_time" parameter. current_time must be the systems time::SystemTime::now()
+    /// with duraction_since(time::UNIX_EPOCH) as seconds.
+    ///
+    /// The motivation for a function like this is for your application to be able to test
+    /// ttl expiry of tokens in your API. This allows you to pass in mock time data to assert
+    /// correct behaviour of your application. Care should be taken to ensure you always pass in
+    /// correct current_time values for deployments.
+    fn decrypt_at_time(
         &self,
         token: &str,
         ttl: Option<u64>,
@@ -284,7 +311,7 @@ mod tests {
 
         for v in vectors {
             let f = Fernet::new(v.secret).unwrap();
-            let decrypted = f._decrypt_at_time(
+            let decrypted = f.decrypt_at_time(
                 v.token,
                 Some(v.ttl_sec),
                 chrono::DateTime::parse_from_rfc3339(v.now)
@@ -302,7 +329,7 @@ mod tests {
 
         for v in vectors {
             let f = Fernet::new(v.secret).unwrap();
-            let decrypted = f._decrypt_at_time(
+            let decrypted = f.decrypt_at_time(
                 v.token,
                 Some(v.ttl_sec),
                 chrono::DateTime::parse_from_rfc3339(v.now)
