@@ -12,6 +12,9 @@ edition = "2018"
 [badges]
 travis-ci = { repository = "mozilla-services/fernet-rs" }
 
+[features]
+fernet_danger_timestamps = []
+
 [dependencies]
 base64 = "0.10"
 byteorder = "1"
