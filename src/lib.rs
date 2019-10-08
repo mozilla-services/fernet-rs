@@ -30,7 +30,9 @@ pub struct Fernet {
 }
 
 /// This error is returned when fernet cannot decrypt the ciphertext for any
-/// reason.
+/// reason. It could be an expired token, incorrect key or other failure. If
+/// you recieve this error, you should consider the fernet token provided as
+/// invalid.
 #[derive(Debug, PartialEq, Eq)]
 pub struct DecryptionError;
 
@@ -55,7 +57,8 @@ impl MultiFernet {
 
     /// Decrypts a ciphertext, using the `Fernet` instances provided. Returns
     /// either `Ok(plaintext)` if decryption is successful or
-    /// `Err(DecryptionError)` if there are any errors.
+    /// `Err(DecryptionError)` if no decryption was possible across the set of
+    /// fernet keys.
     pub fn decrypt(&self, token: &str) -> Result<Vec<u8>, DecryptionError> {
         for fernet in self.fernets.iter() {
             let res = fernet.decrypt(token);
@@ -68,10 +71,10 @@ impl MultiFernet {
     }
 }
 
-/// `Fernet` encapsulates encrypt and decrypt operations for a particular key.
+/// `Fernet` encapsulates encrypt and decrypt operations for a particular synchronous key.
 impl Fernet {
     /// Returns a new fernet instance with the provided key. The key should be
-    /// 32-bytes, base64-encoded. Generating keys with `Fernet::generate_key`
+    /// 32-bytes, url-safe base64-encoded. Generating keys with `Fernet::generate_key`
     /// is recommended. DO NOT USE A HUMAN READABLE PASSWORD AS A KEY. Returns
     /// `None` if the key is not 32-bytes base64 encoded.
     pub fn new(key: &str) -> Option<Fernet> {
@@ -99,8 +102,8 @@ impl Fernet {
         base64::encode_config(&key, base64::URL_SAFE)
     }
 
-    /// Encrypts data. Returns a value (which is base64-encoded) that can be
-    /// passed to `Fernet::decrypt`.
+    /// Encrypts data into a token. Returns a value (which is base64-encoded) that can be
+    /// passed to `Fernet::decrypt` for decryption and verification..
     pub fn encrypt(&self, data: &[u8]) -> String {
         let current_time = time::SystemTime::now()
             .duration_since(time::UNIX_EPOCH)
@@ -113,8 +116,8 @@ impl Fernet {
     /// passed to `Fernet::decrypt`.
     ///
     /// This function has the capacity to be used incorrectly or insecurely due to
-    /// to the "current_time" parameter. current_time must be the systems time::SystemTime::now()
-    /// with duraction_since(time::UNIX_EPOCH) as seconds.
+    /// to the "current_time" parameter. current_time must be the systems `time::SystemTime::now()`
+    /// with `duraction_since(time::UNIX_EPOCH)` as seconds.
     ///
     /// The motivation for a function like this is for your application to be able to test
     /// ttl expiry of tokens in your API. This allows you to pass in mock time data to assert
@@ -160,7 +163,8 @@ impl Fernet {
     }
 
     /// Decrypts a ciphertext. Returns either `Ok(plaintext)` if decryption is
-    /// successful or `Err(DecryptionError)` if there are any errors.
+    /// successful or `Err(DecryptionError)` if there are any errors. Errors could
+    /// include incorrect key or tampering with the data.
     pub fn decrypt(&self, token: &str) -> Result<Vec<u8>, DecryptionError> {
         let current_time = time::SystemTime::now()
             .duration_since(time::UNIX_EPOCH)
@@ -172,7 +176,9 @@ impl Fernet {
     /// Decrypts a ciphertext with a time-to-live. Returns either `Ok(plaintext)`
     /// if decryption is successful or `Err(DecryptionError)` if there are any errors.
     /// Note if the token timestamp + ttl > current time, then this will also yield a
-    /// DecryptionError. The ttl is measured in seconds.
+    /// DecryptionError. The ttl is measured in seconds. This is a relative time, not
+    /// the absolute time of expiry. IE you would use 60 as a ttl_secs if you wanted
+    /// tokens to be considered invalid after that time.
     pub fn decrypt_with_ttl(&self, token: &str, ttl_secs: u64) -> Result<Vec<u8>, DecryptionError> {
         let current_time = time::SystemTime::now()
             .duration_since(time::UNIX_EPOCH)
