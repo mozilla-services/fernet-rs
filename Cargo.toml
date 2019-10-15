@@ -9,11 +9,15 @@ license = "MPL-2.0"
 readme = "README.md"
 edition = "2018"
 
+
 [badges]
 travis-ci = { repository = "mozilla-services/fernet-rs" }
 
 [features]
 fernet_danger_timestamps = []
+
+[package.metadata.docs.rs]
+features = [ "fernet_danger_timestamps" ]
 
 [dependencies]
 base64 = "0.10"
