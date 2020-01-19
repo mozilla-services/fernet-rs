@@ -45,7 +45,7 @@ pub struct MultiFernet {
 /// until successful decryption or a `DecryptionError`.
 impl MultiFernet {
     pub fn new(keys: Vec<Fernet>) -> MultiFernet {
-        assert!(!keys.is_empty(), "Keys already have been set");
+        assert!(!keys.is_empty(), "keys must not be empty");
         MultiFernet { fernets: keys }
     }
 
