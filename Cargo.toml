@@ -20,7 +20,7 @@ fernet_danger_timestamps = []
 features = [ "fernet_danger_timestamps" ]
 
 [dependencies]
-base64 = "0.10"
+base64 = "0.11"
 byteorder = "1"
 openssl = "0.10"
 getrandom = "0.1"
