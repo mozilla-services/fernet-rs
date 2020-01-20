@@ -16,7 +16,7 @@
 // ```
 
 use base64;
-use byteorder::{ReadBytesExt, WriteBytesExt};
+use byteorder::ReadBytesExt;
 use getrandom;
 use openssl;
 use std::io::{Cursor, Read};
@@ -146,9 +146,7 @@ impl Fernet {
 
         let mut result = Vec::new();
         result.push(0x80);
-        result
-            .write_u64::<byteorder::BigEndian>(current_time)
-            .unwrap();
+        result.extend_from_slice(&current_time.to_be_bytes());
         result.extend_from_slice(iv);
         result.extend_from_slice(&ciphertext);
 
