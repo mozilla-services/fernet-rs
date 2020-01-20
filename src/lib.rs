@@ -388,7 +388,7 @@ mod tests {
     fn test_roundtrips() {
         let f = Fernet::new(&base64::encode_config(&vec![0; 32], base64::URL_SAFE)).unwrap();
 
-        for val in [b"".to_vec(), b"Abc".to_vec(), b"\x00\xFF\x00\x00".to_vec()].into_iter() {
+        for val in [b"".to_vec(), b"Abc".to_vec(), b"\x00\xFF\x00\x00".to_vec()].iter() {
             assert_eq!(f.decrypt(&f.encrypt(&val)), Ok(val.clone()));
         }
     }
@@ -415,7 +415,7 @@ mod tests {
         let f1 = Fernet::new(&k).unwrap();
         let f2 = Fernet::new(&k).unwrap();
 
-        for val in [b"".to_vec(), b"Abc".to_vec(), b"\x00\xFF\x00\x00".to_vec()].into_iter() {
+        for val in [b"".to_vec(), b"Abc".to_vec(), b"\x00\xFF\x00\x00".to_vec()].iter() {
             assert_eq!(f1.decrypt(&f2.encrypt(&val)), Ok(val.clone()));
             assert_eq!(f2.decrypt(&f1.encrypt(&val)), Ok(val.clone()));
         }
@@ -460,7 +460,7 @@ mod tests {
     fn test_multi_roundtrips() {
         let f = MultiFernet::new(vec![Fernet::new(&Fernet::generate_key()).unwrap()]);
 
-        for val in [b"".to_vec(), b"Abc".to_vec(), b"\x00\xFF\x00\x00".to_vec()].into_iter() {
+        for val in [b"".to_vec(), b"Abc".to_vec(), b"\x00\xFF\x00\x00".to_vec()].iter() {
             assert_eq!(f.decrypt(&f.encrypt(&val)), Ok(val.clone()));
         }
     }
