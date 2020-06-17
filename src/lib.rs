@@ -15,10 +15,7 @@
 //! assert_eq!(decrypted_plaintext.unwrap(), plaintext);
 // ```
 
-use base64;
 use byteorder::ReadBytesExt;
-use getrandom;
-use openssl;
 use std::io::{Cursor, Read};
 use std::time;
 
@@ -182,7 +179,7 @@ impl Fernet {
             .duration_since(time::UNIX_EPOCH)
             .unwrap()
             .as_secs();
-        return self._decrypt_at_time(token, Some(ttl_secs), current_time);
+        self._decrypt_at_time(token, Some(ttl_secs), current_time)
     }
 
     /// Decrypt a ciphertext with a time-to-live, and the current time.
@@ -277,10 +274,7 @@ impl Fernet {
 #[cfg(test)]
 mod tests {
     use super::{DecryptionError, Fernet, MultiFernet};
-    use base64;
-    use chrono;
     use serde_derive::Deserialize;
-    use serde_json;
     use std::collections::HashSet;
 
     #[derive(Deserialize)]
