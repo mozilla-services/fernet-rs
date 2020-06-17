@@ -21,6 +21,7 @@ use std::time;
 
 const MAX_CLOCK_SKEW: u64 = 60;
 
+#[derive(Clone)]
 pub struct Fernet {
     encryption_key: [u8; 16],
     signing_key: [u8; 16],
@@ -33,6 +34,7 @@ pub struct Fernet {
 #[derive(Debug, PartialEq, Eq)]
 pub struct DecryptionError;
 
+#[derive(Clone)]
 pub struct MultiFernet {
     fernets: Vec<Fernet>,
 }
