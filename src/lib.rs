@@ -16,6 +16,8 @@
 // ```
 
 use byteorder::ReadBytesExt;
+use std::error::Error;
+use std::fmt::{self, Display};
 use std::io::{Cursor, Read};
 use std::time;
 
@@ -33,6 +35,14 @@ pub struct Fernet {
 /// invalid.
 #[derive(Debug, PartialEq, Eq)]
 pub struct DecryptionError;
+
+impl Error for DecryptionError {}
+
+impl Display for DecryptionError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "Fernet decryption error")
+    }
+}
 
 #[derive(Clone)]
 pub struct MultiFernet {
