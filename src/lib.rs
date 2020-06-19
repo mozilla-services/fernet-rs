@@ -21,9 +21,13 @@ use getrandom;
 use openssl;
 use std::io::{Cursor, Read};
 use std::time;
+use zeroize::Zeroize;
 
 const MAX_CLOCK_SKEW: u64 = 60;
 
+// Automatically zero out the contents of the memory when the struct is drop'd.
+#[derive(Zeroize)]
+#[zeroize(drop)]
 pub struct Fernet {
     encryption_key: [u8; 16],
     signing_key: [u8; 16],
