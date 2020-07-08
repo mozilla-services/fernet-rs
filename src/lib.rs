@@ -15,10 +15,9 @@
 //! assert_eq!(decrypted_plaintext.unwrap(), plaintext);
 // ```
 
-use base64;
 use byteorder::ReadBytesExt;
-use getrandom;
-use openssl;
+use std::error::Error;
+use std::fmt::{self, Display};
 use std::io::{Cursor, Read};
 use std::time;
 use zeroize::Zeroize;
@@ -26,7 +25,7 @@ use zeroize::Zeroize;
 const MAX_CLOCK_SKEW: u64 = 60;
 
 // Automatically zero out the contents of the memory when the struct is drop'd.
-#[derive(Zeroize)]
+#[derive(Clone, Zeroize)]
 #[zeroize(drop)]
 pub struct Fernet {
     encryption_key: [u8; 16],
@@ -40,6 +39,15 @@ pub struct Fernet {
 #[derive(Debug, PartialEq, Eq)]
 pub struct DecryptionError;
 
+impl Error for DecryptionError {}
+
+impl Display for DecryptionError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "Fernet decryption error")
+    }
+}
+
+#[derive(Clone)]
 pub struct MultiFernet {
     fernets: Vec<Fernet>,
 }
@@ -186,7 +194,7 @@ impl Fernet {
             .duration_since(time::UNIX_EPOCH)
             .unwrap()
             .as_secs();
-        return self._decrypt_at_time(token, Some(ttl_secs), current_time);
+        self._decrypt_at_time(token, Some(ttl_secs), current_time)
     }
 
     /// Decrypt a ciphertext with a time-to-live, and the current time.
@@ -281,10 +289,7 @@ impl Fernet {
 #[cfg(test)]
 mod tests {
     use super::{DecryptionError, Fernet, MultiFernet};
-    use base64;
-    use chrono;
     use serde_derive::Deserialize;
-    use serde_json;
     use std::collections::HashSet;
 
     #[derive(Deserialize)]
