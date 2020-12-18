@@ -23,7 +23,7 @@ features = [ "fernet_danger_timestamps" ]
 base64 = "0.12"
 byteorder = "1"
 openssl = "0.10"
-getrandom = "0.1"
+getrandom = "0.2"
 zeroize = { version = "1.0", features = ["zeroize_derive"] }
 
 [dev-dependencies]
