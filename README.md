@@ -46,6 +46,6 @@ To support this, we allow you to pass in timestamps to the `encrypt_at_time` and
 api's you need to add the following to Cargo.toml
 
     [dependencies]
-    fernet = { version = "0.1", features = "fernet_danger_timestamps" }
+    fernet = { version = "0.1", features = ["fernet_danger_timestamps"] }
 
 
