@@ -156,7 +156,7 @@ impl Fernet {
         )
         .unwrap();
 
-        let mut result = Vec::new();
+        let mut result = vec![];
         result.push(0x80);
         result.extend_from_slice(&current_time.to_be_bytes());
         result.extend_from_slice(iv);
