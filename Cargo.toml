@@ -1,6 +1,6 @@
 [package]
 name = "fernet"
-version = "0.1.3"
+version = "0.1.4"
 authors = ["Alex Gaynor <agaynor@mozilla.com>", "Ben Bangert <bbangert@mozilla.com>"]
 description = "An implementation of fernet in Rust."
 repository = "https://github.com/mozilla-services/fernet-rs/"
@@ -20,10 +20,10 @@ fernet_danger_timestamps = []
 features = [ "fernet_danger_timestamps" ]
 
 [dependencies]
-base64 = "0.12"
+base64 = "0.13"
 byteorder = "1"
 openssl = "0.10"
-getrandom = "0.1"
+getrandom = "0.2"
 zeroize = { version = "1.0", features = ["zeroize_derive"] }
 
 [dev-dependencies]
