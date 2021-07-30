@@ -156,8 +156,7 @@ impl Fernet {
         )
         .unwrap();
 
-        let mut result = vec![];
-        result.push(0x80);
+        let mut result = vec![0x80];
         result.extend_from_slice(&current_time.to_be_bytes());
         result.extend_from_slice(iv);
         result.extend_from_slice(&ciphertext);
@@ -398,7 +397,7 @@ mod tests {
         let f = Fernet::new(&base64::encode_config(&vec![0; 32], base64::URL_SAFE)).unwrap();
 
         for val in [b"".to_vec(), b"Abc".to_vec(), b"\x00\xFF\x00\x00".to_vec()].iter() {
-            assert_eq!(f.decrypt(&f.encrypt(&val)), Ok(val.clone()));
+            assert_eq!(f.decrypt(&f.encrypt(val)), Ok(val.clone()));
         }
     }
 
@@ -425,8 +424,8 @@ mod tests {
         let f2 = Fernet::new(&k).unwrap();
 
         for val in [b"".to_vec(), b"Abc".to_vec(), b"\x00\xFF\x00\x00".to_vec()].iter() {
-            assert_eq!(f1.decrypt(&f2.encrypt(&val)), Ok(val.clone()));
-            assert_eq!(f2.decrypt(&f1.encrypt(&val)), Ok(val.clone()));
+            assert_eq!(f1.decrypt(&f2.encrypt(val)), Ok(val.clone()));
+            assert_eq!(f2.decrypt(&f1.encrypt(val)), Ok(val.clone()));
         }
     }
 
@@ -470,7 +469,7 @@ mod tests {
         let f = MultiFernet::new(vec![Fernet::new(&Fernet::generate_key()).unwrap()]);
 
         for val in [b"".to_vec(), b"Abc".to_vec(), b"\x00\xFF\x00\x00".to_vec()].iter() {
-            assert_eq!(f.decrypt(&f.encrypt(&val)), Ok(val.clone()));
+            assert_eq!(f.decrypt(&f.encrypt(val)), Ok(val.clone()));
         }
     }
 
