@@ -22,6 +22,13 @@ use std::io::{Cursor, Read};
 use std::time;
 use zeroize::Zeroize;
 
+#[cfg(feature = "rustcrypto")]
+use aes::cipher::{block_padding::Pkcs7, BlockDecryptMut, BlockEncryptMut, KeyIvInit};
+#[cfg(feature = "rustcrypto")]
+use hmac::{Hmac, Mac};
+#[cfg(feature = "rustcrypto")]
+use sha2::Sha256;
+
 const MAX_CLOCK_SKEW: u64 = 60;
 
 // Automatically zero out the contents of the memory when the struct is drop'd.
@@ -82,6 +89,8 @@ impl MultiFernet {
         Err(DecryptionError)
     }
 }
+
+type ParsedToken = (Cursor<Vec<u8>>, Vec<u8>, Vec<u8>);
 
 /// `Fernet` encapsulates encrypt and decrypt operations for a particular synchronous key.
 impl Fernet {
@@ -147,6 +156,7 @@ impl Fernet {
         self._encrypt_from_parts(data, current_time, &iv)
     }
 
+    #[cfg(not(feature = "rustcrypto"))]
     fn _encrypt_from_parts(&self, data: &[u8], current_time: u64, iv: &[u8]) -> String {
         let ciphertext = openssl::symm::encrypt(
             openssl::symm::Cipher::aes_128_cbc(),
@@ -168,6 +178,25 @@ impl Fernet {
 
         result.extend_from_slice(&hmac_signer.sign_to_vec().unwrap());
 
+        base64::encode_config(&result, base64::URL_SAFE)
+    }
+
+    #[cfg(feature = "rustcrypto")]
+    fn _encrypt_from_parts(&self, data: &[u8], current_time: u64, iv: &[u8]) -> String {
+        let ciphertext = cbc::Encryptor::<aes::Aes128>::new_from_slices(&self.encryption_key, iv)
+            .unwrap()
+            .encrypt_padded_vec_mut::<Pkcs7>(data);
+
+        let mut result = vec![0x80];
+        result.extend_from_slice(&current_time.to_be_bytes());
+        result.extend_from_slice(iv);
+        result.extend_from_slice(&ciphertext);
+
+        let mut hmac = Hmac::<Sha256>::new_from_slice(&self.signing_key)
+            .expect("Signing key has unexpected size");
+        hmac.update(&result);
+
+        result.extend_from_slice(&hmac.finalize().into_bytes());
         base64::encode_config(&result, base64::URL_SAFE)
     }
 
@@ -219,12 +248,74 @@ impl Fernet {
         self._decrypt_at_time(token, ttl, current_time)
     }
 
+    #[cfg(not(feature = "rustcrypto"))]
     fn _decrypt_at_time(
         &self,
         token: &str,
         ttl: Option<u64>,
         current_time: u64,
     ) -> Result<Vec<u8>, DecryptionError> {
+        let (data, iv, rest) = Self::_decrypt_parse(token, ttl, current_time)?;
+        let ciphertext = &rest[..rest.len() - 32];
+        let hmac = &rest[rest.len() - 32..];
+
+        let hmac_pkey = openssl::pkey::PKey::hmac(&self.signing_key).unwrap();
+        let mut hmac_signer =
+            openssl::sign::Signer::new(openssl::hash::MessageDigest::sha256(), &hmac_pkey).unwrap();
+        hmac_signer
+            .update(&data.get_ref()[..data.get_ref().len() - 32])
+            .unwrap();
+        let expected_hmac = hmac_signer.sign_to_vec().unwrap();
+        if !openssl::memcmp::eq(&expected_hmac, hmac) {
+            return Err(DecryptionError);
+        }
+
+        let plaintext = openssl::symm::decrypt(
+            openssl::symm::Cipher::aes_128_cbc(),
+            &self.encryption_key,
+            Some(&iv),
+            ciphertext,
+        )
+        .map_err(|_| DecryptionError)?;
+
+        Ok(plaintext)
+    }
+
+    #[cfg(feature = "rustcrypto")]
+    fn _decrypt_at_time(
+        &self,
+        token: &str,
+        ttl: Option<u64>,
+        current_time: u64,
+    ) -> Result<Vec<u8>, DecryptionError> {
+        let (data, iv, rest) = Self::_decrypt_parse(token, ttl, current_time)?;
+        let ciphertext = &rest[..rest.len() - 32];
+        let hmac = &rest[rest.len() - 32..];
+
+        let mut mac = Hmac::<Sha256>::new_from_slice(&self.signing_key)
+            .expect("Signing key has unexpected size");
+        mac.update(&data.get_ref()[..data.get_ref().len() - 32]);
+
+        let expected_hmac = mac.finalize().into_bytes();
+
+        use subtle::ConstantTimeEq;
+        if hmac.ct_eq(&expected_hmac).unwrap_u8() == 0 {
+            return Err(DecryptionError);
+        }
+
+        let plaintext = cbc::Decryptor::<aes::Aes128>::new_from_slices(&self.encryption_key, &iv)
+            .unwrap()
+            .decrypt_padded_vec_mut::<Pkcs7>(ciphertext)
+            .map_err(|_| DecryptionError)?;
+
+        Ok(plaintext)
+    }
+
+    fn _decrypt_parse(
+        token: &str,
+        ttl: Option<u64>,
+        current_time: u64,
+    ) -> Result<ParsedToken, DecryptionError> {
         let data = match base64::decode_config(token, base64::URL_SAFE) {
             Ok(data) => data,
             Err(_) => return Err(DecryptionError),
@@ -259,29 +350,8 @@ impl Fernet {
         if rest.len() < 32 {
             return Err(DecryptionError);
         }
-        let ciphertext = &rest[..rest.len() - 32];
-        let hmac = &rest[rest.len() - 32..];
 
-        let hmac_pkey = openssl::pkey::PKey::hmac(&self.signing_key).unwrap();
-        let mut hmac_signer =
-            openssl::sign::Signer::new(openssl::hash::MessageDigest::sha256(), &hmac_pkey).unwrap();
-        hmac_signer
-            .update(&input.get_ref()[..input.get_ref().len() - 32])
-            .unwrap();
-        let expected_hmac = hmac_signer.sign_to_vec().unwrap();
-        if !openssl::memcmp::eq(&expected_hmac, hmac) {
-            return Err(DecryptionError);
-        }
-
-        let plaintext = openssl::symm::decrypt(
-            openssl::symm::Cipher::aes_128_cbc(),
-            &self.encryption_key,
-            Some(&iv),
-            ciphertext,
-        )
-        .map_err(|_| DecryptionError)?;
-
-        Ok(plaintext)
+        Ok((input, iv, rest))
     }
 }
 
