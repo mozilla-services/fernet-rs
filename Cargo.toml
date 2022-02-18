@@ -35,7 +35,7 @@ subtle = { version = "2.4", optional = true }
 
 
 [dev-dependencies]
-chrono = "0.4"
+time = { version = "0.3", features = ["parsing"] }
 serde = "1.0"
 serde_derive = "1.0"
 serde_json = "1.0"

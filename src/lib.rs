@@ -360,6 +360,8 @@ mod tests {
     use super::{DecryptionError, Fernet, MultiFernet};
     use serde_derive::Deserialize;
     use std::collections::HashSet;
+    use time::format_description::well_known::Rfc3339;
+    use time::OffsetDateTime;
 
     #[derive(Deserialize)]
     struct GenerateVector<'a> {
@@ -396,9 +398,9 @@ mod tests {
             let f = Fernet::new(v.secret).unwrap();
             let token = f._encrypt_from_parts(
                 v.src.as_bytes(),
-                chrono::DateTime::parse_from_rfc3339(v.now)
+                OffsetDateTime::parse(v.now, &Rfc3339)
                     .unwrap()
-                    .timestamp() as u64,
+                    .unix_timestamp() as u64,
                 &v.iv,
             );
             assert_eq!(token, v.token);
@@ -415,9 +417,9 @@ mod tests {
             let decrypted = f._decrypt_at_time(
                 v.token,
                 Some(v.ttl_sec),
-                chrono::DateTime::parse_from_rfc3339(v.now)
+                OffsetDateTime::parse(v.now, &Rfc3339)
                     .unwrap()
-                    .timestamp() as u64,
+                    .unix_timestamp() as u64,
             );
             assert_eq!(decrypted, Ok(v.src.as_bytes().to_vec()));
         }
@@ -433,9 +435,9 @@ mod tests {
             let decrypted = f._decrypt_at_time(
                 v.token,
                 Some(v.ttl_sec),
-                chrono::DateTime::parse_from_rfc3339(v.now)
+                OffsetDateTime::parse(v.now, &Rfc3339)
                     .unwrap()
-                    .timestamp() as u64,
+                    .unix_timestamp() as u64,
             );
             assert_eq!(decrypted, Err(DecryptionError));
         }
