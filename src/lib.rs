@@ -299,7 +299,8 @@ impl Fernet {
         let expected_hmac = hmac_signer.finalize().into_bytes();
 
         use subtle::ConstantTimeEq;
-        if hmac.ct_eq(&expected_hmac).unwrap_u8() == 0 {
+        let hmac_matches: bool = hmac.ct_eq(&expected_hmac).into();
+        if !hmac_matches {
             return Err(DecryptionError);
         }
 
