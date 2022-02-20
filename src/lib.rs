@@ -292,11 +292,11 @@ impl Fernet {
         let ciphertext = &rest[..rest.len() - 32];
         let hmac = &rest[rest.len() - 32..];
 
-        let mut mac = Hmac::<Sha256>::new_from_slice(&self.signing_key)
+        let mut hmac_signer = Hmac::<Sha256>::new_from_slice(&self.signing_key)
             .expect("Signing key has unexpected size");
-        mac.update(&data.get_ref()[..data.get_ref().len() - 32]);
+        hmac_signer.update(&data.get_ref()[..data.get_ref().len() - 32]);
 
-        let expected_hmac = mac.finalize().into_bytes();
+        let expected_hmac = hmac_signer.finalize().into_bytes();
 
         use subtle::ConstantTimeEq;
         if hmac.ct_eq(&expected_hmac).unwrap_u8() == 0 {
