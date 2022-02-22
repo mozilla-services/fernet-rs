@@ -97,7 +97,7 @@ type Hmac = [u8; 32];
 
 /// (message, iv, ciphertext, hmac)
 /// message is the whole token except for the HMAC
-type ParsedToken = (Vec<u8>, IV, Vec<u8>, Hmac);
+struct ParsedToken(Vec<u8>, IV, Vec<u8>, Hmac);
 
 /// `Fernet` encapsulates encrypt and decrypt operations for a particular synchronous key.
 impl Fernet {
@@ -262,7 +262,7 @@ impl Fernet {
         ttl: Option<u64>,
         current_time: u64,
     ) -> Result<Vec<u8>, DecryptionError> {
-        let (message, iv, ciphertext, hmac) = Self::_decrypt_parse(token, ttl, current_time)?;
+        let ParsedToken(message, iv, ciphertext, hmac) = Self::_decrypt_parse(token, ttl, current_time)?;
 
         let hmac_pkey = openssl::pkey::PKey::hmac(&self.signing_key).unwrap();
         let mut hmac_signer =
@@ -293,7 +293,7 @@ impl Fernet {
         ttl: Option<u64>,
         current_time: u64,
     ) -> Result<Vec<u8>, DecryptionError> {
-        let (message, iv, ciphertext, hmac) = Self::_decrypt_parse(token, ttl, current_time)?;
+        let ParsedToken(message, iv, ciphertext, hmac) = Self::_decrypt_parse(token, ttl, current_time)?;
 
         let mut hmac_signer = hmac::Hmac::<Sha256>::new_from_slice(&self.signing_key)
             .expect("Signing key has unexpected size");
@@ -355,13 +355,13 @@ impl Fernet {
         if rest.len() < 32 {
             return Err(DecryptionError);
         }
-        let ciphertext = &rest[..rest.len() - 32];
+        let ciphertext = rest[..rest.len() - 32].to_owned();
         input.seek(SeekFrom::Current(-32)).map_err(|_| DecryptionError)?;
         let mut hmac = [0u8; 32];
         input.read_exact(&mut hmac).map_err(|_| DecryptionError)?;
 
         let message = input.get_ref()[..input.get_ref().len() - 32].to_vec();
-        Ok((message, iv, ciphertext.to_owned(), hmac))
+        Ok(ParsedToken(message, iv, ciphertext, hmac))
     }
 }
 
