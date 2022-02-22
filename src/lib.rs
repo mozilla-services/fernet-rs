@@ -90,14 +90,17 @@ impl MultiFernet {
     }
 }
 
-/// IV, 128 bits
-type IV = [u8; 16];
-/// Hmac, 256 bits
-type Hmac = [u8; 32];
-
-/// (message, iv, ciphertext, hmac)
-/// message is the whole token except for the HMAC
-struct ParsedToken(Vec<u8>, IV, Vec<u8>, Hmac);
+/// Token split into parts before decryption.
+struct ParsedToken {
+    /// message is the whole token except for the HMAC
+    message: Vec<u8>,
+    /// 128 bit IV
+    iv: [u8; 16],
+    /// Ciphertext (part of message)
+    ciphertext: Vec<u8>,
+    /// 256 bit HMAC
+    hmac: [u8; 32],
+}
 
 /// `Fernet` encapsulates encrypt and decrypt operations for a particular synchronous key.
 impl Fernet {
@@ -158,7 +161,7 @@ impl Fernet {
     }
 
     fn _encrypt_at_time(&self, data: &[u8], current_time: u64) -> String {
-        let mut iv: IV = Default::default();
+        let mut iv: [u8; 16] = Default::default();
         getrandom::getrandom(&mut iv).expect("Error in getrandom");
         self._encrypt_from_parts(data, current_time, &iv)
     }
@@ -262,24 +265,22 @@ impl Fernet {
         ttl: Option<u64>,
         current_time: u64,
     ) -> Result<Vec<u8>, DecryptionError> {
-        let ParsedToken(message, iv, ciphertext, hmac) = Self::_decrypt_parse(token, ttl, current_time)?;
+        let parsed = Self::_decrypt_parse(token, ttl, current_time)?;
 
         let hmac_pkey = openssl::pkey::PKey::hmac(&self.signing_key).unwrap();
         let mut hmac_signer =
             openssl::sign::Signer::new(openssl::hash::MessageDigest::sha256(), &hmac_pkey).unwrap();
-        hmac_signer
-            .update(&message)
-            .unwrap();
+        hmac_signer.update(&parsed.message).unwrap();
         let expected_hmac = hmac_signer.sign_to_vec().unwrap();
-        if !openssl::memcmp::eq(&expected_hmac, &hmac) {
+        if !openssl::memcmp::eq(&expected_hmac, &parsed.hmac) {
             return Err(DecryptionError);
         }
 
         let plaintext = openssl::symm::decrypt(
             openssl::symm::Cipher::aes_128_cbc(),
             &self.encryption_key,
-            Some(&iv),
-            &ciphertext,
+            Some(&parsed.iv),
+            &parsed.ciphertext,
         )
         .map_err(|_| DecryptionError)?;
 
@@ -293,24 +294,25 @@ impl Fernet {
         ttl: Option<u64>,
         current_time: u64,
     ) -> Result<Vec<u8>, DecryptionError> {
-        let ParsedToken(message, iv, ciphertext, hmac) = Self::_decrypt_parse(token, ttl, current_time)?;
+        let parsed = Self::_decrypt_parse(token, ttl, current_time)?;
 
         let mut hmac_signer = hmac::Hmac::<Sha256>::new_from_slice(&self.signing_key)
             .expect("Signing key has unexpected size");
-        hmac_signer.update(&message);
+        hmac_signer.update(&parsed.message);
 
         let expected_hmac = hmac_signer.finalize().into_bytes();
 
         use subtle::ConstantTimeEq;
-        let hmac_matches: bool = hmac.ct_eq(&expected_hmac).into();
+        let hmac_matches: bool = parsed.hmac.ct_eq(&expected_hmac).into();
         if !hmac_matches {
             return Err(DecryptionError);
         }
 
-        let plaintext = cbc::Decryptor::<aes::Aes128>::new_from_slices(&self.encryption_key, &iv)
-            .unwrap()
-            .decrypt_padded_vec_mut::<Pkcs7>(&ciphertext)
-            .map_err(|_| DecryptionError)?;
+        let plaintext =
+            cbc::Decryptor::<aes::Aes128>::new_from_slices(&self.encryption_key, &parsed.iv)
+                .unwrap()
+                .decrypt_padded_vec_mut::<Pkcs7>(&parsed.ciphertext)
+                .map_err(|_| DecryptionError)?;
 
         Ok(plaintext)
     }
@@ -356,12 +358,20 @@ impl Fernet {
             return Err(DecryptionError);
         }
         let ciphertext = rest[..rest.len() - 32].to_owned();
-        input.seek(SeekFrom::Current(-32)).map_err(|_| DecryptionError)?;
+
+        input
+            .seek(SeekFrom::Current(-32))
+            .map_err(|_| DecryptionError)?;
         let mut hmac = [0u8; 32];
         input.read_exact(&mut hmac).map_err(|_| DecryptionError)?;
 
         let message = input.get_ref()[..input.get_ref().len() - 32].to_vec();
-        Ok(ParsedToken(message, iv, ciphertext, hmac))
+        Ok(ParsedToken {
+            message,
+            iv,
+            ciphertext,
+            hmac,
+        })
     }
 }
 
