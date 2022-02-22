@@ -18,14 +18,14 @@
 use byteorder::ReadBytesExt;
 use std::error::Error;
 use std::fmt::{self, Display};
-use std::io::{Cursor, Read};
+use std::io::{Cursor, Read, Seek, SeekFrom};
 use std::time;
 use zeroize::Zeroize;
 
 #[cfg(feature = "rustcrypto")]
 use aes::cipher::{block_padding::Pkcs7, BlockDecryptMut, BlockEncryptMut, KeyIvInit};
 #[cfg(feature = "rustcrypto")]
-use hmac::{Hmac, Mac};
+use hmac::Mac;
 #[cfg(feature = "rustcrypto")]
 use sha2::Sha256;
 
@@ -90,7 +90,14 @@ impl MultiFernet {
     }
 }
 
-type ParsedToken = (Cursor<Vec<u8>>, Vec<u8>, Vec<u8>);
+/// IV, 128 bits
+type IV = [u8; 16];
+/// Hmac, 256 bits
+type Hmac = [u8; 32];
+
+/// (message, iv, ciphertext, hmac)
+/// message is the whole token except for the HMAC
+type ParsedToken = (Vec<u8>, IV, Vec<u8>, Hmac);
 
 /// `Fernet` encapsulates encrypt and decrypt operations for a particular synchronous key.
 impl Fernet {
@@ -151,7 +158,7 @@ impl Fernet {
     }
 
     fn _encrypt_at_time(&self, data: &[u8], current_time: u64) -> String {
-        let mut iv: [u8; 16] = Default::default();
+        let mut iv: IV = Default::default();
         getrandom::getrandom(&mut iv).expect("Error in getrandom");
         self._encrypt_from_parts(data, current_time, &iv)
     }
@@ -192,11 +199,11 @@ impl Fernet {
         result.extend_from_slice(iv);
         result.extend_from_slice(&ciphertext);
 
-        let mut hmac = Hmac::<Sha256>::new_from_slice(&self.signing_key)
+        let mut hmac_signer = hmac::Hmac::<Sha256>::new_from_slice(&self.signing_key)
             .expect("Signing key has unexpected size");
-        hmac.update(&result);
+        hmac_signer.update(&result);
 
-        result.extend_from_slice(&hmac.finalize().into_bytes());
+        result.extend_from_slice(&hmac_signer.finalize().into_bytes());
         base64::encode_config(&result, base64::URL_SAFE)
     }
 
@@ -255,18 +262,16 @@ impl Fernet {
         ttl: Option<u64>,
         current_time: u64,
     ) -> Result<Vec<u8>, DecryptionError> {
-        let (data, iv, rest) = Self::_decrypt_parse(token, ttl, current_time)?;
-        let ciphertext = &rest[..rest.len() - 32];
-        let hmac = &rest[rest.len() - 32..];
+        let (message, iv, ciphertext, hmac) = Self::_decrypt_parse(token, ttl, current_time)?;
 
         let hmac_pkey = openssl::pkey::PKey::hmac(&self.signing_key).unwrap();
         let mut hmac_signer =
             openssl::sign::Signer::new(openssl::hash::MessageDigest::sha256(), &hmac_pkey).unwrap();
         hmac_signer
-            .update(&data.get_ref()[..data.get_ref().len() - 32])
+            .update(&message)
             .unwrap();
         let expected_hmac = hmac_signer.sign_to_vec().unwrap();
-        if !openssl::memcmp::eq(&expected_hmac, hmac) {
+        if !openssl::memcmp::eq(&expected_hmac, &hmac) {
             return Err(DecryptionError);
         }
 
@@ -274,7 +279,7 @@ impl Fernet {
             openssl::symm::Cipher::aes_128_cbc(),
             &self.encryption_key,
             Some(&iv),
-            ciphertext,
+            &ciphertext,
         )
         .map_err(|_| DecryptionError)?;
 
@@ -288,13 +293,11 @@ impl Fernet {
         ttl: Option<u64>,
         current_time: u64,
     ) -> Result<Vec<u8>, DecryptionError> {
-        let (data, iv, rest) = Self::_decrypt_parse(token, ttl, current_time)?;
-        let ciphertext = &rest[..rest.len() - 32];
-        let hmac = &rest[rest.len() - 32..];
+        let (message, iv, ciphertext, hmac) = Self::_decrypt_parse(token, ttl, current_time)?;
 
-        let mut hmac_signer = Hmac::<Sha256>::new_from_slice(&self.signing_key)
+        let mut hmac_signer = hmac::Hmac::<Sha256>::new_from_slice(&self.signing_key)
             .expect("Signing key has unexpected size");
-        hmac_signer.update(&data.get_ref()[..data.get_ref().len() - 32]);
+        hmac_signer.update(&message);
 
         let expected_hmac = hmac_signer.finalize().into_bytes();
 
@@ -306,12 +309,13 @@ impl Fernet {
 
         let plaintext = cbc::Decryptor::<aes::Aes128>::new_from_slices(&self.encryption_key, &iv)
             .unwrap()
-            .decrypt_padded_vec_mut::<Pkcs7>(ciphertext)
+            .decrypt_padded_vec_mut::<Pkcs7>(&ciphertext)
             .map_err(|_| DecryptionError)?;
 
         Ok(plaintext)
     }
 
+    /// Parse the base64-encoded token into parts, verify timestamp TTL if given
     fn _decrypt_parse(
         token: &str,
         ttl: Option<u64>,
@@ -343,7 +347,7 @@ impl Fernet {
             return Err(DecryptionError);
         }
 
-        let mut iv = vec![0; 16];
+        let mut iv = [0; 16];
         input.read_exact(&mut iv).map_err(|_| DecryptionError)?;
 
         let mut rest = vec![];
@@ -351,8 +355,13 @@ impl Fernet {
         if rest.len() < 32 {
             return Err(DecryptionError);
         }
+        let ciphertext = &rest[..rest.len() - 32];
+        input.seek(SeekFrom::Current(-32)).map_err(|_| DecryptionError)?;
+        let mut hmac = [0u8; 32];
+        input.read_exact(&mut hmac).map_err(|_| DecryptionError)?;
 
-        Ok((input, iv, rest))
+        let message = input.get_ref()[..input.get_ref().len() - 32].to_vec();
+        Ok((message, iv, ciphertext.to_owned(), hmac))
     }
 }
 
