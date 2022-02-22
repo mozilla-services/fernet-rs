@@ -29,10 +29,10 @@ use hmac::Mac;
 #[cfg(feature = "rustcrypto")]
 use sha2::Sha256;
 
-#[cfg(not(any(feature = "rustcrypto", feature = "default",)))]
+#[cfg(not(any(feature = "rustcrypto", feature = "openssl",)))]
 compile_error!(
     "no crypto cargo feature enabled! \
-     please enable one of: default, rustcrypto"
+     please enable one of: default, openssl"
 );
 
 const MAX_CLOCK_SKEW: u64 = 60;
