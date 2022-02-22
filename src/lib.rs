@@ -29,6 +29,12 @@ use hmac::Mac;
 #[cfg(feature = "rustcrypto")]
 use sha2::Sha256;
 
+#[cfg(not(any(feature = "rustcrypto", feature = "default",)))]
+compile_error!(
+    "no crypto cargo feature enabled! \
+     please enable one of: default, rustcrypto"
+);
+
 const MAX_CLOCK_SKEW: u64 = 60;
 
 // Automatically zero out the contents of the memory when the struct is drop'd.
@@ -476,7 +482,7 @@ mod tests {
         assert_eq!(
             f.decrypt(&base64::encode_config(
                 b"\x80\x00\x00\x00",
-                base64::URL_SAFE
+                base64::URL_SAFE,
             )),
             Err(DecryptionError)
         );
@@ -580,7 +586,7 @@ mod tests {
             f._decrypt_at_time(
                 &f._encrypt_at_time(b"abc", current_time),
                 Some(30),
-                good_time
+                good_time,
             )
             .unwrap(),
             b"abc".to_vec()
@@ -589,7 +595,7 @@ mod tests {
             f._decrypt_at_time(
                 &f._encrypt_at_time(b"abc", current_time),
                 Some(30),
-                exp_time
+                exp_time,
             )
             .unwrap_err(),
             DecryptionError
