@@ -21,6 +21,7 @@ use std::fmt::{self, Display};
 use std::io::{Cursor, Read, Seek, SeekFrom};
 use std::time;
 use zeroize::Zeroize;
+use base64::Engine;
 
 #[cfg(feature = "rustcrypto")]
 use aes::cipher::{block_padding::Pkcs7, BlockDecryptMut, BlockEncryptMut, KeyIvInit};
@@ -115,7 +116,7 @@ impl Fernet {
     /// is recommended. DO NOT USE A HUMAN READABLE PASSWORD AS A KEY. Returns
     /// `None` if the key is not 32-bytes base64 encoded.
     pub fn new(key: &str) -> Option<Fernet> {
-        let key = base64::decode_config(key, base64::URL_SAFE).ok()?;
+        let key = b64_decode_url(key).ok()?;
         if key.len() != 32 {
             return None;
         }
@@ -136,7 +137,7 @@ impl Fernet {
     pub fn generate_key() -> String {
         let mut key: [u8; 32] = Default::default();
         getrandom::getrandom(&mut key).expect("Error in getrandom");
-        base64::encode_config(&key, base64::URL_SAFE)
+        crate::b64_encode_url(&key.to_vec())
     }
 
     /// Encrypts data into a token. Returns a value (which is base64-encoded) that can be
@@ -194,7 +195,7 @@ impl Fernet {
 
         result.extend_from_slice(&hmac_signer.sign_to_vec().unwrap());
 
-        base64::encode_config(&result, base64::URL_SAFE)
+        crate::b64_encode_url(&result)
     }
 
     #[cfg(feature = "rustcrypto")]
@@ -213,7 +214,7 @@ impl Fernet {
         hmac_signer.update(&result);
 
         result.extend_from_slice(&hmac_signer.finalize().into_bytes());
-        base64::encode_config(&result, base64::URL_SAFE)
+        crate::b64_encode_url(&result)
     }
 
     /// Decrypts a ciphertext. Returns either `Ok(plaintext)` if decryption is
@@ -329,7 +330,7 @@ impl Fernet {
         ttl: Option<u64>,
         current_time: u64,
     ) -> Result<ParsedToken, DecryptionError> {
-        let data = match base64::decode_config(token, base64::URL_SAFE) {
+        let data = match b64_decode_url(token) {
             Ok(data) => data,
             Err(_) => return Err(DecryptionError),
         };
@@ -471,19 +472,17 @@ mod tests {
 
     #[test]
     fn test_invalid() {
-        let f = Fernet::new(&base64::encode_config(&vec![0; 32], base64::URL_SAFE)).unwrap();
+        let f = Fernet::new(&super::b64_encode_url(&vec![0; 32])).unwrap();
 
         // Invalid version byte
         assert_eq!(
-            f.decrypt(&base64::encode_config(b"\x81", base64::URL_SAFE)),
+            f.decrypt(&crate::b64_encode_url(&b"\x81".to_vec())),
             Err(DecryptionError)
         );
         // Timestamp too short
         assert_eq!(
-            f.decrypt(&base64::encode_config(
-                b"\x80\x00\x00\x00",
-                base64::URL_SAFE,
-            )),
+            f.decrypt(&super::b64_encode_url(
+                &b"\x80\x00\x00\x00".to_vec())),
             Err(DecryptionError)
         );
         // Invalid base64
@@ -492,7 +491,7 @@ mod tests {
 
     #[test]
     fn test_roundtrips() {
-        let f = Fernet::new(&base64::encode_config(&vec![0; 32], base64::URL_SAFE)).unwrap();
+        let f = Fernet::new(&super::b64_encode_url(&vec![0; 32])).unwrap();
 
         for val in [b"".to_vec(), b"Abc".to_vec(), b"\x00\xFF\x00\x00".to_vec()].iter() {
             assert_eq!(f.decrypt(&f.encrypt(val)), Ok(val.clone()));
@@ -502,8 +501,8 @@ mod tests {
     #[test]
     fn test_new_errors() {
         assert!(Fernet::new("axxx").is_none());
-        assert!(Fernet::new(&base64::encode_config(&vec![0, 33], base64::URL_SAFE)).is_none());
-        assert!(Fernet::new(&base64::encode_config(&vec![0, 31], base64::URL_SAFE)).is_none());
+        assert!(Fernet::new(&super::b64_encode_url(&vec![0, 33])).is_none());
+        assert!(Fernet::new(&super::b64_encode_url(&vec![0, 31])).is_none());
     }
 
     #[test]
@@ -601,4 +600,15 @@ mod tests {
             DecryptionError
         );
     }
+}
+
+/// base64 had a habit of changing this a fair bit, so isolating these functions
+/// to reduce future code changes.
+///
+pub(crate) fn b64_decode_url(input: &str) -> std::result::Result<Vec<u8>, base64::DecodeError> {
+    base64::engine::general_purpose::URL_SAFE_NO_PAD.decode(input.trim_end_matches('='))
+}
+
+pub(crate) fn b64_encode_url(input: &Vec<u8>) -> String {
+    base64::engine::general_purpose::URL_SAFE.encode(input)
 }
