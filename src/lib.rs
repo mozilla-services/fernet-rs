@@ -109,7 +109,7 @@ struct ParsedToken {
     hmac: [u8; 32],
 }
 
-/// `Fernet` encapsulates encrypt and decrypt operations for a particular synchronous key.
+/// `Fernet` encapsulates encrypt and decrypt operations for a particular symmetric key.
 impl Fernet {
     /// Returns a new fernet instance with the provided key. The key should be
     /// 32-bytes, url-safe base64-encoded. Generating keys with `Fernet::generate_key`
