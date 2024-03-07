@@ -47,6 +47,6 @@ jobs:
           command: clippy
           args: -- -D warnings
 
-      - uses: actions-rs/audit-check@v1
+      - uses: actions-rs/audit-check@v1.2.0
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
