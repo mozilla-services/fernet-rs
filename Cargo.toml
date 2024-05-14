@@ -1,6 +1,6 @@
 [package]
 name = "fernet"
-version = "0.2.1"
+version = "0.2.2"
 authors = [
     "Alex Gaynor <agaynor@mozilla.com>",
     "Ben Bangert <bbangert@mozilla.com>",
