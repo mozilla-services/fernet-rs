@@ -2,7 +2,7 @@
 name = "fernet"
 version = "0.2.2"
 authors = [
-    "Alex Gaynor <agaynor@mozilla.com>",
+    "Alex Gaynor <alex.gaynor@gmail.com>",
     "Ben Bangert <bbangert@mozilla.com>",
 ]
 description = "An implementation of fernet in Rust."
