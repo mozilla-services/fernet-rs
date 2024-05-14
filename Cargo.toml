@@ -1,7 +1,10 @@
 [package]
 name = "fernet"
 version = "0.2.1"
-authors = ["Alex Gaynor <agaynor@mozilla.com>", "Ben Bangert <bbangert@mozilla.com>"]
+authors = [
+    "Alex Gaynor <agaynor@mozilla.com>",
+    "Ben Bangert <bbangert@mozilla.com>",
+]
 description = "An implementation of fernet in Rust."
 repository = "https://github.com/mozilla-services/fernet-rs/"
 homepage = "https://github.com/mozilla-services/fernet-rs/"
@@ -22,7 +25,7 @@ rustcrypto = ["aes", "cbc", "sha2", "hmac", "subtle"]
 features = ["fernet_danger_timestamps"]
 
 [dependencies]
-base64 = "0.21"
+base64 = "0.22"
 byteorder = "1"
 openssl = { version = "0.10", optional = true }
 getrandom = "0.2"
