@@ -15,7 +15,7 @@ jobs:
           - "--features default"
           - "--no-default-features --features rustcrypto"
     steps:
-      - uses: actions/checkout@v4.1.1
+      - uses: actions/checkout@v4.1.6
       - uses: actions-rs/toolchain@v1                                                                                      
         with:                                                                                                              
           profile: minimal                                                                                                 
