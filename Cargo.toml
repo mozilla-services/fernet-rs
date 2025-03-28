@@ -1,16 +1,17 @@
 [package]
 name = "fernet"
-version = "0.2.2"
+version = "0.3.0"
 authors = [
     "Alex Gaynor <alex.gaynor@gmail.com>",
     "Ben Bangert <bbangert@mozilla.com>",
+    "jr conlin <src+fernet@jrconlin.com>",
 ]
 description = "An implementation of fernet in Rust."
 repository = "https://github.com/mozilla-services/fernet-rs/"
 homepage = "https://github.com/mozilla-services/fernet-rs/"
 license = "MPL-2.0"
 readme = "README.md"
-edition = "2018"
+edition = "2024"
 
 
 [badges]
@@ -28,7 +29,7 @@ features = ["fernet_danger_timestamps"]
 base64 = "0.22"
 byteorder = "1"
 openssl = { version = "0.10", optional = true }
-getrandom = "0.2"
+getrandom = "0.3"
 zeroize = { version = "1.0", features = ["zeroize_derive"] }
 aes = { version = "0.8", optional = true }
 cbc = { version = "0.1", optional = true, features = ["alloc"] }
