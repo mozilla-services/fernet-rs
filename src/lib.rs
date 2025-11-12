@@ -15,13 +15,13 @@
 //! assert_eq!(decrypted_plaintext.unwrap(), plaintext);
 // ```
 
+use base64::Engine;
 use byteorder::ReadBytesExt;
 use std::error::Error;
 use std::fmt::{self, Display};
 use std::io::{Cursor, Read, Seek, SeekFrom};
 use std::time;
 use zeroize::Zeroize;
-use base64::Engine;
 
 #[cfg(feature = "rustcrypto")]
 use aes::cipher::{block_padding::Pkcs7, BlockDecryptMut, BlockEncryptMut, KeyIvInit};
@@ -136,7 +136,7 @@ impl Fernet {
     /// Store this somewhere safe!
     pub fn generate_key() -> String {
         let mut key: [u8; 32] = Default::default();
-        getrandom::getrandom(&mut key).expect("Error in getrandom");
+        getrandom::fill(&mut key).expect("Error in getrandom");
         crate::b64_encode_url(&key.to_vec())
     }
 
@@ -169,7 +169,7 @@ impl Fernet {
 
     fn _encrypt_at_time(&self, data: &[u8], current_time: u64) -> String {
         let mut iv: [u8; 16] = Default::default();
-        getrandom::getrandom(&mut iv).expect("Error in getrandom");
+        getrandom::fill(&mut iv).expect("Error in getrandom");
         self._encrypt_from_parts(data, current_time, &iv)
     }
 
@@ -481,8 +481,7 @@ mod tests {
         );
         // Timestamp too short
         assert_eq!(
-            f.decrypt(&super::b64_encode_url(
-                &b"\x80\x00\x00\x00".to_vec())),
+            f.decrypt(&super::b64_encode_url(&b"\x80\x00\x00\x00".to_vec())),
             Err(DecryptionError)
         );
         // Invalid base64
